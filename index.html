@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Gemini 3 Pro - 绘图工作台（Google版）</title>
     <style>
         :root {
@@ -16,6 +16,13 @@
             --header-height: 60px;
             --content-max-width: 860px;
             --input-bg: #f0f2f5;
+            /* 兼容性处理：优先使用 dvh，不支持则回退到 vh */
+            --app-height: 100vh;
+        }
+
+        /* 支持 dvh 的浏览器使用动态视口高度 */
+        @supports (height: 100dvh) {
+            :root { --app-height: 100dvh; }
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -29,8 +36,12 @@
         body {
             font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             margin: 0; padding: 0;
-            display: flex; height: 100vh; overflow: hidden;
+            display: flex; 
+            height: var(--app-height); /* 关键修复 */
+            overflow: hidden;
             background-color: var(--bg-color); color: var(--text-main);
+            position: fixed; /* 防止整个页面在iOS上橡皮筋滚动 */
+            width: 100%;
         }
 
         /* --- 侧边栏 --- */
@@ -96,6 +107,7 @@
         .main-area {
             flex: 1; display: flex; flex-direction: column;
             position: relative; background-color: #fff; height: 100%;
+            width: 100%; overflow: hidden; /* 防止主区域撑开 body */
         }
 
         .desktop-header {
@@ -120,10 +132,14 @@
             z-index: 50; align-items: center; padding: 0 20px; justify-content: space-between;
         }
 
+        /* 重要：调整聊天容器的Padding，确保底部不被遮挡 */
         .chat-container {
-            flex: 1; overflow-y: auto; padding: 20px 0 160px 0;
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px 0 100px 0; /* 增加底部 padding 预留给输入框 */
             display: flex; flex-direction: column; align-items: center;
             scroll-behavior: smooth; width: 100%;
+            -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
         }
 
         .message-row {
@@ -171,20 +187,31 @@
             width: 24px; height: 24px; margin-right: 4px;
         }
 
+        /* 关键修复：输入框容器定位 */
         .input-container-outer {
-            position: absolute; bottom: 30px; left: 50%;
-            transform: translateX(-50%); width: 100%; max-width: var(--content-max-width);
-            padding: 0 20px; display: flex; flex-direction: column; align-items: center; z-index: 20;
+            position: absolute; 
+            bottom: 20px; /* 稍微抬高 */
+            left: 50%;
+            transform: translateX(-50%); 
+            width: 100%; 
+            max-width: var(--content-max-width);
+            padding: 0 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            z-index: 20;
             pointer-events: none;
+            /* 确保输入框背景不透明 */
         }
+
         .input-wrapper {
             width: 100%; background: var(--input-bg); border-radius: 24px;
             display: flex; align-items: flex-end; padding: 10px 12px; 
             transition: background 0.2s, box-shadow 0.2s; border: 1px solid transparent; min-height: 52px;
             pointer-events: auto;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* 增强阴影，确保可见 */
         }
-        .input-wrapper:focus-within { background: #fff; border-color: #dadce0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .input-wrapper:focus-within { background: #fff; border-color: #dadce0; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         
         textarea {
             flex: 1; border: none; background: transparent; padding: 0 8px; margin-bottom: 2px;
@@ -394,16 +421,36 @@
             .sidebar-nav.open { transform: translateX(0); }
             .settings-sidebar { position: fixed; right: 0; top: 0; bottom: 0; transform: translateX(100%); box-shadow: -5px 0 15px rgba(0,0,0,0.1); padding-top: 20px; }
             .settings-sidebar.open { transform: translateX(0); }
-            .main-area { padding-top: var(--header-height); }
-            .chat-container { padding: 20px 0 140px 0; }
+            
+            /* 关键修复：移动端高度计算，兼容 dvh 不支持的情况 */
+            .main-area { 
+                height: 100%;
+                padding-top: var(--header-height); 
+                /* 确保键盘弹出时布局正确 */
+                display: flex; 
+                flex-direction: column;
+            }
+            
+            /* 输入框位置，确保在移动端靠下且有足够 padding */
+            .input-container-outer { 
+                padding: 0 16px; 
+                bottom: 20px; 
+                /* 使用 sticky 或 absolute 视情况而定，但在 flex 布局下 absolute 配合 padding-bottom 较稳 */
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            /* 给聊天框底部更大的空间，防止输入框遮挡最后一条消息 */
+            .chat-container { 
+                padding: 20px 0 120px 0; 
+            }
+            
             .message-row { padding: 0 16px; }
-            .input-container-outer { padding: 0 16px; bottom: 16px; }
             .slice-toolbar { flex-direction: column; gap: 12px; align-items: stretch; }
             .slice-btn-group { width: 100%; justify-content: center; }
             .slice-action-btn { justify-content: center; }
             #slice-result-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
             
-            /* 移动端删除按钮始终显示（如果有选中状态的话），或者热区更大 */
+            /* 移动端删除按钮 */
             .delete-btn-line { display: block; transform: scale(0.8); opacity: 0.8; }
         }
     </style>
