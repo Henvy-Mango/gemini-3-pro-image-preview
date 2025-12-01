@@ -983,16 +983,60 @@
             <!-- Left: Settings & History -->
             <div class="xhs-sidebar collapsed" id="xhs-sidebar">
                 <div class="xhs-sidebar-inner">
-                    <details class="xhs-config-card" style="cursor:pointer;">
+                    <details class="xhs-config-card" style="cursor:pointer;" open>
                         <summary class="xhs-section-label" style="list-style:none; user-select:none;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/></svg>
-                            灵感引擎配置
+                            文案生成 API 配置
                         </summary>
                         <div style="margin-top:12px;">
-                            <div class="config-group"><label>API Host</label><input class="xhs-input" id="xhs-api-host" placeholder="https://api..."></div>
-                            <div class="config-group"><label>API Key</label><input class="xhs-input" type="password" id="xhs-api-key" placeholder="sk-..."></div>
-                            <div class="config-group"><label>Model</label><input class="xhs-input" id="xhs-api-model" placeholder="gemini-2.5-flash"></div>
-                            <button class="xhs-save-btn" onclick="XHSCreator.saveSettings()">保存配置</button>
+                            <div class="config-group">
+                                <label>API Base URL</label>
+                                <input class="xhs-input" id="xhs-text-api-host" placeholder="https://api.openai.com">
+                            </div>
+                            <div class="config-group">
+                                <label>API Key</label>
+                                <input class="xhs-input" type="password" id="xhs-text-api-key" placeholder="sk-...">
+                            </div>
+                            <div class="config-group">
+                                <label>快速选择模型</label>
+                                <select id="xhs-text-model-quick" class="xhs-input" onchange="XHSCreator.quickSelectModel(this.value)">
+                                    <option value="">选择常用模型...</option>
+                                    <optgroup label="Google Gemini">
+                                        <option value="gemini-3-pro-preview">gemini-3-pro-preview</option>
+                                    </optgroup>
+                                    <optgroup label="OpenAI">
+                                        <option value="gpt-4o">gpt-4o</option>
+                                        <option value="gpt-5.1">gpt-5.1</option>
+                                    </optgroup>
+                                    <optgroup label="Anthropic Claude">
+                                        <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</option>
+                                        <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022</option>
+                                        <option value="claude-sonnet-4-5">claude-sonnet-4-5</option>
+                                    </optgroup>
+                                    <optgroup label="自定义模型" id="xhs-custom-models-group" style="display:none;">
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label>模型名称</label>
+                                <input class="xhs-input" id="xhs-text-model" placeholder="输入或选择模型名称">
+                            </div>
+                            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                                <button class="config-btn" style="flex:1;padding:6px 12px;font-size:12px;" onclick="XHSCreator.addCustomModel()">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    添加到自定义
+                                </button>
+                                <button class="config-btn danger" style="flex:1;padding:6px 12px;font-size:12px;" onclick="XHSCreator.removeCustomModel()">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    删除自定义
+                                </button>
+                            </div>
+                            <button class="xhs-save-btn" onclick="XHSCreator.saveTextSettings()">保存配置</button>
+                            <div style="font-size:11px;color:#888;margin-top:12px;line-height:1.4;">
+                                💡 提示：使用 OpenAI 兼容格式的 API<br>
+                                📌 文案生成独立配置，不影响绘图设置<br>
+                                ✨ 可将常用模型添加到快速选择列表
+                            </div>
                         </div>
                     </details>
                     <div class="xhs-section-label">
@@ -1431,28 +1475,101 @@
             this.modal = document.getElementById('xhs-modal');
             this.topicInput = document.getElementById('xhs-topic');
             this.previewBox = document.getElementById('xhs-previews');
-            this.loadSettings();
+            this.loadTextSettings();
             this.renderHistory();
         },
         open() {
             if(!this.modal) this.init();
             closeAllSidebars();
             this.modal.classList.add('active');
-            this.loadSettings();
+            this.loadTextSettings();
             this.renderHistory();
         },
         close() { this.modal.classList.remove('active'); },
-
-        loadSettings() {
-            document.getElementById('xhs-api-host').value = localStorage.getItem('xhs_api_host') || 'https://api....';
-            document.getElementById('xhs-api-key').value = localStorage.getItem('xhs_api_key') || '';
-            document.getElementById('xhs-api-model').value = localStorage.getItem('xhs_api_model') || 'gemini-2.5-flash-image';
+        
+        quickSelectModel(modelName) {
+            if (modelName) {
+                document.getElementById('xhs-text-model').value = modelName;
+            }
         },
-        saveSettings() {
-            localStorage.setItem('xhs_api_host', document.getElementById('xhs-api-host').value);
-            localStorage.setItem('xhs_api_key', document.getElementById('xhs-api-key').value);
-            localStorage.setItem('xhs_api_model', document.getElementById('xhs-api-model').value);
-            alert('配置已保存');
+        
+        loadTextSettings() {
+            document.getElementById('xhs-text-api-host').value = localStorage.getItem('xhs_text_api_host') || 'https://api.openai.com';
+            document.getElementById('xhs-text-api-key').value = localStorage.getItem('xhs_text_api_key') || '';
+            document.getElementById('xhs-text-model').value = localStorage.getItem('xhs_text_model') || 'gpt-4o';
+            this.loadCustomModels();
+        },
+        
+        saveTextSettings() {
+            localStorage.setItem('xhs_text_api_host', document.getElementById('xhs-text-api-host').value);
+            localStorage.setItem('xhs_text_api_key', document.getElementById('xhs-text-api-key').value);
+            localStorage.setItem('xhs_text_model', document.getElementById('xhs-text-model').value);
+            showToast('配置已保存', 'success');
+        },
+        
+        loadCustomModels() {
+            const customModels = JSON.parse(localStorage.getItem('xhs_custom_models') || '[]');
+            const group = document.getElementById('xhs-custom-models-group');
+            
+            if (customModels.length === 0) {
+                group.style.display = 'none';
+                group.innerHTML = '';
+            } else {
+                group.style.display = 'block';
+                group.innerHTML = customModels.map(model => 
+                    `<option value="${model}">${model}</option>`
+                ).join('');
+            }
+        },
+        
+        addCustomModel() {
+            const modelName = document.getElementById('xhs-text-model').value.trim();
+            
+            if (!modelName) {
+                showToast('请先输入模型名称', 'warning');
+                return;
+            }
+            
+            const customModels = JSON.parse(localStorage.getItem('xhs_custom_models') || '[]');
+            
+            if (customModels.includes(modelName)) {
+                showToast('该模型已存在于自定义列表', 'warning');
+                return;
+            }
+            
+            customModels.push(modelName);
+            localStorage.setItem('xhs_custom_models', JSON.stringify(customModels));
+            
+            this.loadCustomModels();
+            showToast(`已添加 "${modelName}" 到自定义模型`, 'success');
+        },
+        
+        removeCustomModel() {
+            const modelName = document.getElementById('xhs-text-model').value.trim();
+            
+            if (!modelName) {
+                showToast('请先输入或选择要删除的模型名称', 'warning');
+                return;
+            }
+            
+            const customModels = JSON.parse(localStorage.getItem('xhs_custom_models') || '[]');
+            const index = customModels.indexOf(modelName);
+            
+            if (index === -1) {
+                showToast('该模型不在自定义列表中', 'warning');
+                return;
+            }
+            
+            if (!confirm(`确定要删除自定义模型 "${modelName}" 吗？`)) {
+                return;
+            }
+            
+            customModels.splice(index, 1);
+            localStorage.setItem('xhs_custom_models', JSON.stringify(customModels));
+            
+            this.loadCustomModels();
+            document.getElementById('xhs-text-model').value = '';
+            showToast(`已删除 "${modelName}"`, 'success');
         },
 
         handleFiles(files) {
@@ -1480,15 +1597,17 @@
         async generateOutline() {
             const topic = this.topicInput.value.trim();
             const imgCount = document.getElementById('xhs-img-count').value || 4;
-            const host = document.getElementById('xhs-api-host').value.replace(/\/+$/, '');
-            const key = document.getElementById('xhs-api-key').value.trim();
-            const model = document.getElementById('xhs-api-model').value.trim();
-
-            // 验证输入
-            if (!key) {
-                showToast('请先在左侧配置 API Key', 'warning', 3000);
+            
+            // 获取文案生成API配置
+            const host = document.getElementById('xhs-text-api-host').value.trim().replace(/\/+$/, '');
+            const key = document.getElementById('xhs-text-api-key').value.trim();
+            const model = document.getElementById('xhs-text-model').value.trim();
+            
+            if (!host || !key || !model) {
+                showToast('请先配置文案生成API', 'warning', 3000);
                 return;
             }
+            
             if (!topic && this.refImages.length === 0) {
                 showToast('请输入主题或上传参考图片', 'warning', 3000);
                 return;
@@ -1537,11 +1656,25 @@
 - 如果用户上传了参考图，必须在prompt中体现参考图的风格特征
 - 确保JSON格式完全正确，可以被直接解析`;
 
-            let contentPayload = [{ type: "text", text: systemPrompt + "\n\n需求：" + topic }];
-            this.refImages.forEach(imgObj => { contentPayload.push({ type: "image_url", image_url: { url: imgObj.src } }); });
-            const requestBody = { model: model, stream: false, messages: [ { role: "user", content: contentPayload } ] };
-
             try {
+                // 使用 OpenAI 兼容格式
+                let contentPayload = [{ type: "text", text: systemPrompt + "\n\n需求：" + topic }];
+                this.refImages.forEach(imgObj => { 
+                    contentPayload.push({ 
+                        type: "image_url", 
+                        image_url: { url: imgObj.src } 
+                    }); 
+                });
+                
+                const requestBody = { 
+                    model: model, 
+                    stream: false, 
+                    messages: [{ 
+                        role: "user", 
+                        content: contentPayload 
+                    }] 
+                };
+
                 const res = await fetch(`${host}/v1/chat/completions`, {
                     method: 'POST',
                     headers: {
@@ -1550,11 +1683,11 @@
                     },
                     body: JSON.stringify(requestBody)
                 });
-
+                
                 if (!res.ok) {
                     throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                 }
-
+                
                 const data = await res.json();
 
                 if (data.error) {
@@ -1761,10 +1894,12 @@
                     if (quality === "2K") size = "2048x2048";
                     else if (quality === "4K") size = "4096x4096";
 
+                    const useStreaming = document.getElementById('stream-toggle')?.checked || false;
+
                     const payload = {
                         model: config.model,
                         messages: messages,
-                        stream: false,
+                        stream: useStreaming,
                         size: size,
                         aspect_ratio: aspectRatio !== "3:4" ? aspectRatio : undefined
                     };
@@ -1785,14 +1920,47 @@
                         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                     }
 
-                    const data = await res.json();
-
-                    if (data.error) {
-                        throw new Error(data.error.message || 'API返回错误');
+                    let content;
+                    if (useStreaming) {
+                        const reader = res.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        let fullContent = '';
+                        
+                        while (true) {
+                            const {done, value} = await reader.read();
+                            if (done) break;
+                            
+                            buffer += decoder.decode(value, {stream: true});
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+                            
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const data = line.slice(6).trim();
+                                    if (data === '[DONE]') continue;
+                                    
+                                    try {
+                                        const json = JSON.parse(data);
+                                        if (json.choices?.[0]?.delta?.content) {
+                                            fullContent += json.choices[0].delta.content;
+                                        }
+                                    } catch (e) {
+                                        console.warn('Parse SSE error:', e);
+                                    }
+                                }
+                            }
+                        }
+                        content = fullContent;
+                    } else {
+                        const data = await res.json();
+                        if (data.error) {
+                            throw new Error(data.error.message || 'API返回错误');
+                        }
+                        content = data.choices?.[0]?.message?.content || '';
                     }
 
-                    if (data.choices?.[0]?.message?.content) {
-                        const content = data.choices[0].message.content;
+                    if (content) {
                         const dataUrlMatch = content.match(/!\[.*?\]\((data:image\/[^)]+)\)/);
                         const httpUrlMatch = content.match(/!\[.*?\]\((https?:\/\/[^)]+)\)/);
                         
